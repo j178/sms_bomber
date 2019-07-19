@@ -27,10 +27,11 @@ class Bomber:
     DEFAULT_CONCURENT = 50
     DEFAULT_TIMEOUT = aiohttp.ClientTimeout(total=5, connect=3)
 
-    def __init__(self, target, concurrent=DEFAULT_CONCURENT):
+    def __init__(self, target, proxy_pool_url=None, concurrent=DEFAULT_CONCURENT):
         self.target = target
         self.concurrent = concurrent
         self.used_proxies = set()
+        self.proxy_pool = proxy_pool_url
 
     def collect_shotters(self, session):
         r = []
@@ -40,9 +41,8 @@ class Bomber:
         return r
 
     async def get_proxy(self, session):
-        url = 'http://127.0.0.1:5010/get'
         while True:
-            async with session.get(url) as resp:
+            async with session.get(self.proxy_pool) as resp:
                 content = await resp.text()
             if 'no proxy' in content:
                 return None
@@ -57,8 +57,11 @@ class Bomber:
                                          cookie_jar=CookieJar()) as session:
             shotters = self.collect_shotters(session)
             while True:
-                proxy = await self.get_proxy(session)
-                print('using proxy:', proxy)
+                proxy = None
+                if self.proxy_pool:
+                    proxy = await self.get_proxy(session)
+                    print('using proxy:', proxy)
+
                 # 一种更符合逻辑的实现，不用等待任务完成
                 # for shotter in shotters:
                 #     asyncio.create_task(shotter.shot(target, proxy))
@@ -402,6 +405,6 @@ def test():
 
 
 if __name__ == '__main__':
-    test()
-    bomber = Bomber(sys.argv[1])
+    # test()
+    bomber = Bomber(sys.argv[1], 'http://127.0.0.1:5010/get/')
     asyncio.run(bomber.bomb())
