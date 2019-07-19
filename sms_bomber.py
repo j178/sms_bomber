@@ -118,15 +118,17 @@ class BaseShotter:
         self._retry_after = None
 
     async def shot(self, target, proxy):
+        if not self.is_available():
+            print(self.__class__.__name__, 'unavailable')
+            return
+
         async with self.semaphore:
-            if not self.is_available():
-                print(self.__class__.__name__, 'unavailable')
-                return
             resp = await self.do_shot(target, proxy)
             if not resp:
                 return
-            async with resp:
-                await self.handle_response(resp)
+            
+        async with resp:
+            await self.handle_response(resp)
 
     async def do_shot(self, target, proxy):
         first_get_response = None
